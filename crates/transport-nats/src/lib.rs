@@ -653,6 +653,9 @@ impl Drop for SubjectWriter {
                 if let Err(err) = nats.publish(subject, Bytes::default()).await {
                     warn!(?err, "failed to publish stream shutdown message");
                 }
+                if let Err(err) = nats.flush().await {
+                    warn!(?err, "failed to flush nats client");
+                }
                 drop(tasks);
             });
         }
@@ -1196,6 +1199,7 @@ async fn handle_message(
     nats.publish_with_reply(tx.clone(), rx, Bytes::default())
         .await
         .context("failed to publish handshake accept")?;
+    nats.flush().await.context("failed to flush")?;
     Ok((
         headers,
         SubjectWriter::new(
